@@ -1,0 +1,9 @@
+{
+  "name": "taller-sistema",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de mantenimiento, produccion y presupuestos para taller metalurgico",
+  "dependencies": {
+    "@netlify/blobs": "^8.2.0"
+  }
+}
