@@ -474,7 +474,14 @@ function verDetalleOt(id) {
   qrBox.innerHTML = "";
   const qrText = `OT ${item.numeroOrden}\nCliente: ${item.cliente}\nTrabajo: ${item.titulo}\nEntrega: ${formatDate(item.fechaCompromiso)}`;
   if (window.QRCode) {
-    new QRCode(qrBox, { text: qrText, width: 96, height: 96 });
+    try {
+      // correctLevel L (menor redundancia, mayor capacidad) y typeNumber 0 (auto)
+      // evitan "code length overflow" cuando cliente/título son largos.
+      new QRCode(qrBox, { text: qrText, width: 96, height: 96, typeNumber: 0, correctLevel: QRCode.CorrectLevel.L });
+    } catch (err) {
+      console.error("No se pudo generar el QR de la OT:", err);
+      qrBox.innerHTML = '<span class="muted" style="font-size:0.75rem;">QR no disponible (texto muy largo)</span>';
+    }
   }
 
   openModal("modalOtDetalle");
