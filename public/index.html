@@ -8,157 +8,298 @@
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <h1 id="empresaNombre">Sistema de Taller</h1>
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="mantenimiento">Mantenimiento</button>
-      <button class="tab-btn" data-tab="produccion">Producción</button>
-      <button class="tab-btn" data-tab="presupuestos">Presupuestos</button>
-      <button class="tab-btn" data-tab="config">Configuración</button>
-    </nav>
-  </div>
-</header>
+<div class="app-shell">
 
-<main class="container">
-
-  <section class="stats-bar" id="statsBar">
-    <div class="stat-card stat-danger">
-      <span class="stat-number" id="statAtrasadosMant">0</span>
-      <span class="stat-label">Mantenimientos atrasados</span>
-    </div>
-    <div class="stat-card stat-warning">
-      <span class="stat-number" id="statProximosMant">0</span>
-      <span class="stat-label">Mantenimientos próximos (7 días)</span>
-    </div>
-    <div class="stat-card stat-danger">
-      <span class="stat-number" id="statAtrasadosProd">0</span>
-      <span class="stat-label">Trabajos atrasados</span>
-    </div>
-    <div class="stat-card stat-neutral">
-      <span class="stat-number" id="statEnProceso">0</span>
-      <span class="stat-label">Trabajos en proceso</span>
-    </div>
-  </section>
-
-  <!-- MANTENIMIENTO -->
-  <section class="tab-panel active" id="tab-mantenimiento">
-    <div class="panel-header">
-      <h2>Mantenimiento Preventivo</h2>
-      <button class="btn btn-primary" id="btnNuevoMant">+ Nueva tarea</button>
-    </div>
-
-    <div class="table-wrap">
-      <table id="tablaMant">
-        <thead>
-          <tr>
-            <th>Máquina</th>
-            <th>Tipo</th>
-            <th>Tarea</th>
-            <th>Frecuencia (días)</th>
-            <th>Última realización</th>
-            <th>Próximo mantenimiento</th>
-            <th>Estado</th>
-            <th>Responsable</th>
-            <th>Observaciones</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tablaMantBody"></tbody>
-      </table>
-      <p class="empty-msg" id="mantEmptyMsg" style="display:none;">Todavía no cargaste ninguna tarea de mantenimiento.</p>
-    </div>
-  </section>
-
-  <!-- PRODUCCION -->
-  <section class="tab-panel" id="tab-produccion">
-    <div class="panel-header">
-      <h2>Órdenes de Trabajo / Producción</h2>
-      <button class="btn btn-primary" id="btnNuevaOrden">+ Nueva orden</button>
-    </div>
-
-    <div class="table-wrap">
-      <table id="tablaOrdenes">
-        <thead>
-          <tr>
-            <th>N° Orden</th>
-            <th>Cliente</th>
-            <th>Trabajo / Pieza</th>
-            <th>Máquina</th>
-            <th>Estado</th>
-            <th>Inicio</th>
-            <th>Entrega estimada</th>
-            <th>Entrega real</th>
-            <th>Atraso (días)</th>
-            <th>Responsable</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tablaOrdenesBody"></tbody>
-      </table>
-      <p class="empty-msg" id="ordenesEmptyMsg" style="display:none;">Todavía no cargaste ninguna orden de trabajo.</p>
-    </div>
-  </section>
-
-  <!-- PRESUPUESTOS -->
-  <section class="tab-panel" id="tab-presupuestos">
-    <div class="panel-header">
-      <h2>Presupuestos / Cotización</h2>
-      <button class="btn btn-primary" id="btnNuevoPresupuesto">+ Nuevo presupuesto</button>
-    </div>
-
-    <div class="table-wrap">
-      <table id="tablaPresupuestos">
-        <thead>
-          <tr>
-            <th>N°</th>
-            <th>Cliente</th>
-            <th>Descripción</th>
-            <th>Material</th>
-            <th>Horas Conv.</th>
-            <th>Horas CNC</th>
-            <th>Horas Sold.</th>
-            <th>Margen</th>
-            <th>Total</th>
-            <th>Fecha</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tablaPresupuestosBody"></tbody>
-      </table>
-      <p class="empty-msg" id="presEmptyMsg" style="display:none;">Todavía no armaste ningún presupuesto.</p>
-    </div>
-  </section>
-
-  <!-- CONFIGURACION -->
-  <section class="tab-panel" id="tab-config">
-    <div class="panel-header">
-      <h2>Configuración</h2>
-    </div>
-    <form id="formConfig" class="form-grid card">
-      <label>Nombre de la empresa
-        <input type="text" name="empresa" id="cfgEmpresa">
-      </label>
-      <label>Costo hora torno convencional ($)
-        <input type="number" name="rateConvencional" id="cfgRateConv" min="0" step="1">
-      </label>
-      <label>Costo hora torno CNC ($)
-        <input type="number" name="rateCNC" id="cfgRateCNC" min="0" step="1">
-      </label>
-      <label>Costo hora soldadura ($)
-        <input type="number" name="rateSoldadura" id="cfgRateSold" min="0" step="1">
-      </label>
-      <label>Margen por defecto (%)
-        <input type="number" name="defaultMargin" id="cfgMargin" min="0" step="1">
-      </label>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Guardar configuración</button>
-        <span id="cfgSavedMsg" class="saved-msg"></span>
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">🔧</div>
+      <div>
+        <div class="logo-name" id="empresaNombreSidebar">Sistema de Taller</div>
+        <div class="logo-tag">Gestión interna</div>
       </div>
-    </form>
-  </section>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="inicio"><span class="nav-icon">🏠</span> Inicio</button>
+      <button class="nav-item" data-view="mantenimiento"><span class="nav-icon">🛠️</span> Mantenimiento</button>
+      <button class="nav-item" data-view="produccion"><span class="nav-icon">📋</span> Órdenes de trabajo</button>
+      <button class="nav-item" data-view="presupuestos"><span class="nav-icon">🧾</span> Presupuestos</button>
+      <button class="nav-item" data-view="config"><span class="nav-icon">⚙️</span> Configuración</button>
+    </nav>
+    <div class="sidebar-footer">Mecanizados · Metalúrgica · Gestión integrada</div>
+  </aside>
 
-</main>
+  <div class="main-area">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="viewTitle">Inicio</div>
+        <div class="topbar-sub" id="viewSubtitle">Panorama general del taller</div>
+      </div>
+      <div class="topbar-actions">
+        <span class="topbar-empresa" id="empresaNombreTop">Sistema de Taller</span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- INICIO -->
+      <section class="view active" id="view-inicio">
+        <div class="stats-row" id="statsInicio">
+          <div class="stat-tile tile-red">
+            <div class="stat-tile-label">Mantenimientos atrasados</div>
+            <div class="stat-tile-number" id="homeStatMantAtrasados">0</div>
+            <div class="stat-tile-note">Requieren atención ya</div>
+          </div>
+          <div class="stat-tile tile-orange">
+            <div class="stat-tile-label">Mantenimientos próximos</div>
+            <div class="stat-tile-number" id="homeStatMantProximos">0</div>
+            <div class="stat-tile-note">Vencen en 7 días o menos</div>
+          </div>
+          <div class="stat-tile tile-blue">
+            <div class="stat-tile-label">OT activas</div>
+            <div class="stat-tile-number" id="homeStatOtActivas">0</div>
+            <div class="stat-tile-note">Pendientes, en curso o control de calidad</div>
+          </div>
+          <div class="stat-tile tile-red">
+            <div class="stat-tile-label">OT atrasadas</div>
+            <div class="stat-tile-number" id="homeStatOtAtrasadas">0</div>
+            <div class="stat-tile-note">Superaron la fecha comprometida</div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Bienvenido</h2>
+          <p class="muted">Usá el menú de la izquierda para cargar mantenimientos, gestionar órdenes de trabajo y armar presupuestos. Los números de arriba se actualizan solos con lo que cargues en cada módulo.</p>
+        </div>
+      </section>
+
+      <!-- MANTENIMIENTO -->
+      <section class="view" id="view-mantenimiento">
+        <div class="panel-header">
+          <h2>Mantenimiento Preventivo</h2>
+          <button class="btn btn-primary" id="btnNuevoMant">+ Nueva tarea</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tablaMant">
+            <thead>
+              <tr>
+                <th>Máquina</th>
+                <th>Tipo</th>
+                <th>Tarea</th>
+                <th>Frecuencia (días)</th>
+                <th>Última realización</th>
+                <th>Próximo mantenimiento</th>
+                <th>Estado</th>
+                <th>Responsable</th>
+                <th>Observaciones</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaMantBody"></tbody>
+          </table>
+          <p class="empty-msg" id="mantEmptyMsg" style="display:none;">Todavía no cargaste ninguna tarea de mantenimiento.</p>
+        </div>
+      </section>
+
+      <!-- PRODUCCION / ORDENES DE TRABAJO -->
+      <section class="view" id="view-produccion">
+        <p class="view-intro">Gestión operativa del taller: seguimiento por estado, prioridad y plano adjunto por OT.</p>
+
+        <div class="stats-row" id="statsOT">
+          <div class="stat-tile tile-blue">
+            <div class="stat-tile-label">OT activas</div>
+            <div class="stat-tile-number" id="statOtActivas">0</div>
+            <div class="stat-tile-note">Pendientes, en curso o reprogramadas</div>
+          </div>
+          <div class="stat-tile tile-orange">
+            <div class="stat-tile-label">En proceso</div>
+            <div class="stat-tile-number" id="statOtEnProceso">0</div>
+            <div class="stat-tile-note">Trabajos actualmente en ejecución</div>
+          </div>
+          <div class="stat-tile tile-red">
+            <div class="stat-tile-label">Atrasadas</div>
+            <div class="stat-tile-number" id="statOtAtrasadas">0</div>
+            <div class="stat-tile-note">Superaron la fecha comprometida</div>
+          </div>
+          <div class="stat-tile tile-green">
+            <div class="stat-tile-label">Finalizadas</div>
+            <div class="stat-tile-number" id="statOtFinalizadas">0</div>
+            <div class="stat-tile-note">Órdenes cerradas y entregadas</div>
+          </div>
+        </div>
+
+        <div class="ot-layout">
+          <div class="card ot-list-panel">
+            <h2>Bandeja operativa</h2>
+            <p class="muted">Vista rápida de las OT con cliente, operario y fecha compromiso.</p>
+
+            <div class="ot-filters">
+              <input type="text" id="otSearch" placeholder="Buscar OT, cliente, activo u operario">
+              <select id="otFilterEstado">
+                <option value="">Todos los estados</option>
+                <option>Pendiente</option>
+                <option>En proceso</option>
+                <option>Control de calidad</option>
+                <option>Entregado</option>
+              </select>
+              <select id="otFilterPrioridad">
+                <option value="">Todas las prioridades</option>
+                <option>Baja</option>
+                <option>Media</option>
+                <option>Alta</option>
+              </select>
+            </div>
+
+            <div class="ot-cards" id="otCardsList"></div>
+            <p class="empty-msg" id="ordenesEmptyMsg" style="display:none;">Todavía no cargaste ninguna orden de trabajo.</p>
+          </div>
+
+          <div class="card ot-form-panel">
+            <h2>Nueva OT</h2>
+            <p class="muted">Carga de OT del taller con plano adjunto y datos de trazabilidad.</p>
+
+            <form id="formOrdenNueva" class="field-form">
+              <div class="two-col">
+                <label>Cliente
+                  <input type="text" name="cliente" required>
+                </label>
+                <label>Título / nombre del trabajo
+                  <input type="text" name="titulo" required>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Cantidad
+                  <input type="number" name="cantidad" min="1" step="1" value="1">
+                </label>
+                <label>Fecha compromiso
+                  <input type="date" name="fechaCompromiso" required>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Orden de compra
+                  <input type="text" name="ordenCompra">
+                </label>
+                <label>Remito cliente
+                  <input type="text" name="remitoCliente">
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Remito salida
+                  <input type="text" name="remitoSalida">
+                </label>
+                <label>Operario / responsable
+                  <input type="text" name="operario">
+                </label>
+              </div>
+              <div class="two-col">
+                <label class="checkbox-field"><input type="checkbox" name="requiereValidacion"> Requiere validación responsable</label>
+                <label class="checkbox-field"><input type="checkbox" name="requiereTTA"> Requiere TTA</label>
+              </div>
+              <div class="two-col">
+                <label class="checkbox-field"><input type="checkbox" name="requierePlano"> Requiere plano</label>
+                <label>Activo asociado
+                  <select name="activoAsociado" id="selActivoAsociadoNueva">
+                    <option value="">Sin asignar</option>
+                  </select>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Tipo
+                  <select name="tipo">
+                    <option>Correctivo</option>
+                    <option>Preventivo</option>
+                    <option>Instalación</option>
+                    <option>Fabricación</option>
+                    <option>Otro</option>
+                  </select>
+                </label>
+                <label>Prioridad
+                  <select name="prioridad">
+                    <option>Baja</option>
+                    <option selected>Media</option>
+                    <option>Alta</option>
+                  </select>
+                </label>
+              </div>
+              <div class="two-col">
+                <label>Ubicación / sector
+                  <input type="text" name="ubicacion">
+                </label>
+                <label>Horas estimadas para realizar la tarea
+                  <input type="number" name="horasEstimadas" min="0" step="0.5">
+                </label>
+              </div>
+              <label>Plano adjunto (PDF o imagen)
+                <input type="file" name="planoAdjunto" accept="application/pdf,image/*">
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-block">Guardar OT</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRESUPUESTOS -->
+      <section class="view" id="view-presupuestos">
+        <div class="panel-header">
+          <h2>Presupuestos / Cotización</h2>
+          <button class="btn btn-primary" id="btnNuevoPresupuesto">+ Nuevo presupuesto</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tablaPresupuestos">
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Cliente</th>
+                <th>Descripción</th>
+                <th>Material</th>
+                <th>Horas Conv.</th>
+                <th>Horas CNC</th>
+                <th>Horas Sold.</th>
+                <th>Margen</th>
+                <th>Total</th>
+                <th>Fecha</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaPresupuestosBody"></tbody>
+          </table>
+          <p class="empty-msg" id="presEmptyMsg" style="display:none;">Todavía no armaste ningún presupuesto.</p>
+        </div>
+      </section>
+
+      <!-- CONFIGURACION -->
+      <section class="view" id="view-config">
+        <div class="panel-header">
+          <h2>Configuración</h2>
+        </div>
+        <form id="formConfig" class="form-grid card">
+          <label>Nombre de la empresa
+            <input type="text" name="empresa" id="cfgEmpresa">
+          </label>
+          <label>Costo hora torno convencional ($)
+            <input type="number" name="rateConvencional" id="cfgRateConv" min="0" step="1">
+          </label>
+          <label>Costo hora torno CNC ($)
+            <input type="number" name="rateCNC" id="cfgRateCNC" min="0" step="1">
+          </label>
+          <label>Costo hora soldadura ($)
+            <input type="number" name="rateSoldadura" id="cfgRateSold" min="0" step="1">
+          </label>
+          <label>Margen por defecto (%)
+            <input type="number" name="defaultMargin" id="cfgMargin" min="0" step="1">
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar configuración</button>
+            <span id="cfgSavedMsg" class="saved-msg"></span>
+          </div>
+        </form>
+      </section>
+
+    </main>
+  </div>
+</div>
 
 <!-- MODAL MANTENIMIENTO -->
 <div class="modal" id="modalMant">
@@ -202,50 +343,126 @@
   </div>
 </div>
 
-<!-- MODAL ORDEN -->
-<div class="modal" id="modalOrden">
-  <div class="modal-card">
-    <h3 id="modalOrdenTitle">Nueva orden de trabajo</h3>
-    <form id="formOrden">
+<!-- MODAL DETALLE OT -->
+<div class="modal" id="modalOtDetalle">
+  <div class="modal-card modal-wide">
+    <h3 id="otDetalleTitulo">OT</h3>
+    <div id="otDetalleTags" class="ot-detail-tags"></div>
+    <div id="otDetalleGrid" class="ot-detail-grid"></div>
+    <div id="otDetallePlano"></div>
+    <div class="ot-qr-wrap">
+      <div id="otQrCode"></div>
+      <div>
+        <div style="font-weight:bold; font-size:0.85rem;">Etiqueta de OT</div>
+        <div class="muted" style="margin-top:2px;">Para imprimir y pegar en la pieza o carpeta de trabajo.</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" data-close-modal="modalOtDetalle">Cerrar</button>
+      <button type="button" class="btn btn-outline" id="btnEditarOt">Editar</button>
+      <button type="button" class="btn btn-danger" id="btnEliminarOt">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR OT -->
+<div class="modal" id="modalOtEditar">
+  <div class="modal-card modal-wide">
+    <h3>Editar OT</h3>
+    <form id="formOtEditar" class="field-form">
       <input type="hidden" name="id">
-      <label>N° de orden
-        <input type="text" name="numeroOrden" required placeholder="Ej: OT-1042">
-      </label>
-      <label>Cliente
-        <input type="text" name="cliente" required>
-      </label>
-      <label>Trabajo / Pieza
-        <input type="text" name="descripcion" required>
-      </label>
-      <label>Máquina asignada
-        <input type="text" name="maquina">
-      </label>
-      <label>Estado
-        <select name="estado">
-          <option>Pendiente</option>
-          <option>En proceso</option>
-          <option>Control de calidad</option>
-          <option>Entregado</option>
-        </select>
-      </label>
-      <label>Fecha de inicio
-        <input type="date" name="fechaInicio">
-      </label>
-      <label>Entrega estimada
-        <input type="date" name="entregaEstimada" required>
-      </label>
-      <label>Entrega real
-        <input type="date" name="entregaReal">
-      </label>
-      <label>Responsable
-        <input type="text" name="responsable">
+      <div class="two-col">
+        <label>Cliente
+          <input type="text" name="cliente" required>
+        </label>
+        <label>Título / nombre del trabajo
+          <input type="text" name="titulo" required>
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Cantidad
+          <input type="number" name="cantidad" min="1" step="1">
+        </label>
+        <label>Fecha compromiso
+          <input type="date" name="fechaCompromiso" required>
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Orden de compra
+          <input type="text" name="ordenCompra">
+        </label>
+        <label>Remito cliente
+          <input type="text" name="remitoCliente">
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Remito salida
+          <input type="text" name="remitoSalida">
+        </label>
+        <label>Operario / responsable
+          <input type="text" name="operario">
+        </label>
+      </div>
+      <div class="two-col">
+        <label class="checkbox-field"><input type="checkbox" name="requiereValidacion"> Requiere validación responsable</label>
+        <label class="checkbox-field"><input type="checkbox" name="requiereTTA"> Requiere TTA</label>
+      </div>
+      <div class="two-col">
+        <label class="checkbox-field"><input type="checkbox" name="requierePlano"> Requiere plano</label>
+        <label>Activo asociado
+          <select name="activoAsociado" id="selActivoAsociadoEditar">
+            <option value="">Sin asignar</option>
+          </select>
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Tipo
+          <select name="tipo">
+            <option>Correctivo</option>
+            <option>Preventivo</option>
+            <option>Instalación</option>
+            <option>Fabricación</option>
+            <option>Otro</option>
+          </select>
+        </label>
+        <label>Prioridad
+          <select name="prioridad">
+            <option>Baja</option>
+            <option>Media</option>
+            <option>Alta</option>
+          </select>
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Ubicación / sector
+          <input type="text" name="ubicacion">
+        </label>
+        <label>Horas estimadas para realizar la tarea
+          <input type="number" name="horasEstimadas" min="0" step="0.5">
+        </label>
+      </div>
+      <div class="two-col">
+        <label>Estado
+          <select name="estado">
+            <option>Pendiente</option>
+            <option>En proceso</option>
+            <option>Control de calidad</option>
+            <option>Entregado</option>
+          </select>
+        </label>
+        <label>Entrega real
+          <input type="date" name="entregaReal">
+        </label>
+      </div>
+      <label>Plano adjunto (PDF o imagen) — dejar vacío para mantener el actual
+        <input type="file" name="planoAdjunto" accept="application/pdf,image/*">
       </label>
       <label>Observaciones
         <textarea name="observaciones" rows="2"></textarea>
       </label>
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" data-close-modal="modalOrden">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-close-modal="modalOtEditar">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
       </div>
     </form>
   </div>
@@ -291,6 +508,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
