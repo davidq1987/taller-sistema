@@ -49,6 +49,16 @@ function money(n) {
   return "$" + num.toLocaleString("es-AR", { maximumFractionDigits: 0 });
 }
 
+function slug(str) {
+  return (str || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "-");
+}
+
+function escapeHtml(str) {
+  const d = document.createElement("div");
+  d.textContent = str == null ? "" : str;
+  return d.innerHTML;
+}
+
 async function apiGet(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Error al leer datos");
@@ -70,14 +80,35 @@ async function apiDelete(url) {
   if (!res.ok && res.status !== 204) throw new Error("Error al borrar");
 }
 
-// ---------- tabs ----------
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-$all(".tab-btn").forEach((btn) => {
+// ---------- navegación lateral ----------
+
+const VIEW_META = {
+  inicio: { title: "Inicio", sub: "Panorama general del taller" },
+  mantenimiento: { title: "Mantenimiento", sub: "Mantenimiento preventivo de máquinas y equipos" },
+  produccion: { title: "Órdenes de trabajo", sub: "Gestión operativa del taller, seguimiento por estado" },
+  presupuestos: { title: "Presupuestos", sub: "Cotización de trabajos para clientes" },
+  config: { title: "Configuración", sub: "Datos de la empresa y tarifas" },
+};
+
+$all(".nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
-    $all(".tab-btn").forEach((b) => b.classList.remove("active"));
-    $all(".tab-panel").forEach((p) => p.classList.remove("active"));
+    const view = btn.dataset.view;
+    $all(".nav-item").forEach((b) => b.classList.remove("active"));
+    $all(".view").forEach((v) => v.classList.remove("active"));
     btn.classList.add("active");
-    $("#tab-" + btn.dataset.tab).classList.add("active");
+    $("#view-" + view).classList.add("active");
+    const meta = VIEW_META[view] || { title: "", sub: "" };
+    $("#viewTitle").textContent = meta.title;
+    $("#viewSubtitle").textContent = meta.sub;
   });
 });
 
@@ -95,6 +126,24 @@ $all(".modal").forEach((modal) => {
     if (e.target === modal) closeModal(modal.id);
   });
 });
+
+// ------------------------------------------------------------------
+// INICIO (dashboard)
+// ------------------------------------------------------------------
+
+function renderInicio() {
+  const mant = state.machines.map(computeMantEstado);
+  const atrasadosMant = mant.filter((m) => m.estado === "ATRASADO").length;
+  const proximosMant = mant.filter((m) => m.estado === "PRÓXIMO").length;
+
+  const activas = state.orders.filter((o) => o.estado !== "Entregado").length;
+  const atrasadasOt = state.orders.filter((o) => computeOtAtraso(o) && o.estado !== "Entregado").length;
+
+  $("#homeStatMantAtrasados").textContent = atrasadosMant;
+  $("#homeStatMantProximos").textContent = proximosMant;
+  $("#homeStatOtActivas").textContent = activas;
+  $("#homeStatOtAtrasadas").textContent = atrasadasOt;
+}
 
 // ------------------------------------------------------------------
 // MANTENIMIENTO
@@ -117,8 +166,6 @@ function renderMantenimiento() {
   body.innerHTML = "";
   $("#mantEmptyMsg").style.display = state.machines.length ? "none" : "block";
 
-  let atrasados = 0, proximos = 0;
-
   const sorted = [...state.machines].sort((a, b) => {
     const ea = computeMantEstado(a).dias ?? 9999;
     const eb = computeMantEstado(b).dias ?? 9999;
@@ -127,8 +174,6 @@ function renderMantenimiento() {
 
   sorted.forEach((item) => {
     const { estado, proxima } = computeMantEstado(item);
-    if (estado === "ATRASADO") atrasados++;
-    if (estado === "PRÓXIMO") proximos++;
 
     const badgeClass =
       estado === "ATRASADO" ? "badge-atrasado" :
@@ -154,17 +199,10 @@ function renderMantenimiento() {
     body.appendChild(tr);
   });
 
-  $("#statAtrasadosMant").textContent = atrasados;
-  $("#statProximosMant").textContent = proximos;
-
   $all("[data-edit-mant]").forEach((b) => b.addEventListener("click", () => editMant(b.dataset.editMant)));
   $all("[data-del-mant]").forEach((b) => b.addEventListener("click", () => deleteMant(b.dataset.delMant)));
-}
 
-function escapeHtml(str) {
-  const d = document.createElement("div");
-  d.textContent = str;
-  return d.innerHTML;
+  renderInicio();
 }
 
 $("#btnNuevoMant").addEventListener("click", () => {
@@ -196,6 +234,7 @@ async function deleteMant(id) {
   await apiDelete(`${API.machines}?id=${id}`);
   state.machines = state.machines.filter((m) => m.id !== id);
   renderMantenimiento();
+  populateActivoAsociado();
 }
 
 $("#formMant").addEventListener("submit", async (e) => {
@@ -220,121 +259,284 @@ $("#formMant").addEventListener("submit", async (e) => {
   }
   closeModal("modalMant");
   renderMantenimiento();
+  populateActivoAsociado();
 });
 
 // ------------------------------------------------------------------
-// PRODUCCION
+// PRODUCCION / ÓRDENES DE TRABAJO
 // ------------------------------------------------------------------
 
-function computeOrdenAtraso(item) {
-  if (!item.entregaEstimada) return 0;
-  const ref = item.entregaReal || todayStr();
-  const dias = daysBetween(item.entregaEstimada, ref);
-  return dias > 0 ? dias : 0;
+function computeOtAtraso(item) {
+  if (!item.fechaCompromiso || item.estado === "Entregado") return false;
+  return daysBetween(item.fechaCompromiso, todayStr()) > 0;
+}
+
+function nextOrderNumber() {
+  const nums = state.orders
+    .map((o) => parseInt((o.numeroOrden || "").replace(/\D/g, ""), 10))
+    .filter((n) => !isNaN(n));
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  return "OT-" + String(next).padStart(4, "0");
+}
+
+function populateActivoAsociado() {
+  const options = ['<option value="">Sin asignar</option>']
+    .concat(state.machines.map((m) => `<option value="${escapeHtml(m.maquina)}">${escapeHtml(m.maquina)}</option>`))
+    .join("");
+  ["selActivoAsociadoNueva", "selActivoAsociadoEditar"].forEach((id) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = options;
+    sel.value = current;
+  });
+}
+
+function renderStatsOT() {
+  const activas = state.orders.filter((o) => o.estado !== "Entregado").length;
+  const enProceso = state.orders.filter((o) => o.estado === "En proceso").length;
+  const atrasadas = state.orders.filter((o) => computeOtAtraso(o)).length;
+  const finalizadas = state.orders.filter((o) => o.estado === "Entregado").length;
+
+  $("#statOtActivas").textContent = activas;
+  $("#statOtEnProceso").textContent = enProceso;
+  $("#statOtAtrasadas").textContent = atrasadas;
+  $("#statOtFinalizadas").textContent = finalizadas;
+}
+
+function estadoBadgeClass(estado) {
+  return "badge-estado-" + slug(estado || "pendiente");
+}
+
+function prioridadBadgeClass(prioridad) {
+  return "badge-prioridad-" + slug(prioridad || "media");
 }
 
 function renderOrdenes() {
-  const body = $("#tablaOrdenesBody");
-  body.innerHTML = "";
+  renderStatsOT();
+
+  const search = ($("#otSearch").value || "").toLowerCase().trim();
+  const filtroEstado = $("#otFilterEstado").value;
+  const filtroPrioridad = $("#otFilterPrioridad").value;
+
+  let list = [...state.orders];
+
+  if (search) {
+    list = list.filter((o) =>
+      [o.numeroOrden, o.cliente, o.activoAsociado, o.operario, o.titulo]
+        .some((v) => (v || "").toLowerCase().includes(search))
+    );
+  }
+  if (filtroEstado) list = list.filter((o) => o.estado === filtroEstado);
+  if (filtroPrioridad) list = list.filter((o) => o.prioridad === filtroPrioridad);
+
+  list.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  const container = $("#otCardsList");
+  container.innerHTML = "";
   $("#ordenesEmptyMsg").style.display = state.orders.length ? "none" : "block";
 
-  let atrasados = 0, enProceso = 0;
+  list.forEach((item) => {
+    const atrasada = computeOtAtraso(item);
+    const estadoLabel = atrasada ? "Atrasada" : (item.estado || "Pendiente");
+    const estadoClass = atrasada ? "badge-atrasado" : estadoBadgeClass(item.estado);
+    const planos = item.planoData ? 1 : 0;
+    const remitos = [item.remitoCliente, item.remitoSalida].filter(Boolean).length;
 
-  const sorted = [...state.orders].sort((a, b) => computeOrdenAtraso(b) - computeOrdenAtraso(a));
-
-  sorted.forEach((item) => {
-    const atraso = computeOrdenAtraso(item);
-    if (atraso > 0 && item.estado !== "Entregado") atrasados++;
-    if (item.estado === "En proceso") enProceso++;
-
-    const badgeClass = atraso > 0 ? "badge-atrasado" : "badge-aldia";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${escapeHtml(item.numeroOrden || "")}</td>
-      <td>${escapeHtml(item.cliente || "")}</td>
-      <td>${escapeHtml(item.descripcion || "")}</td>
-      <td>${escapeHtml(item.maquina || "")}</td>
-      <td><span class="badge badge-neutral">${escapeHtml(item.estado || "")}</span></td>
-      <td>${formatDate(item.fechaInicio)}</td>
-      <td>${formatDate(item.entregaEstimada)}</td>
-      <td>${formatDate(item.entregaReal)}</td>
-      <td><span class="badge ${badgeClass}">${atraso}</span></td>
-      <td>${escapeHtml(item.responsable || "")}</td>
-      <td>
-        <button class="btn-icon" title="Editar" data-edit-orden="${item.id}">✏️</button>
-        <button class="btn-icon" title="Eliminar" data-del-orden="${item.id}">🗑️</button>
-      </td>
+    const card = document.createElement("div");
+    card.className = "ot-card";
+    card.innerHTML = `
+      <div class="ot-card-top">
+        <span class="ot-card-id">${escapeHtml(item.numeroOrden || "")}</span>
+        <span class="badge ${prioridadBadgeClass(item.prioridad)}">${escapeHtml(item.prioridad || "Media")}</span>
+        <span class="badge ${estadoClass}">${escapeHtml(estadoLabel)}</span>
+      </div>
+      <div class="ot-card-title">${escapeHtml(item.titulo || "")}</div>
+      <div class="ot-card-meta">
+        <div><b>Cliente:</b> ${escapeHtml(item.cliente || "-")}</div>
+        <div><b>Operario:</b> ${escapeHtml(item.operario || "Sin asignar")}</div>
+        <div><b>Activo:</b> ${escapeHtml(item.activoAsociado || "Sin asignar")}</div>
+        <div><b>Entrega:</b> ${formatDate(item.fechaCompromiso)}</div>
+      </div>
+      <div class="ot-card-footer">
+        <span>Planos: ${planos} · Remitos: ${remitos} · Cant.: ${item.cantidad ?? 1}</span>
+        <button class="btn btn-outline" data-ver-ot="${item.id}">Ver detalles</button>
+      </div>
     `;
-    body.appendChild(tr);
+    container.appendChild(card);
   });
 
-  $("#statAtrasadosProd").textContent = atrasados;
-  $("#statEnProceso").textContent = enProceso;
+  $all("[data-ver-ot]").forEach((b) => b.addEventListener("click", () => verDetalleOt(b.dataset.verOt)));
 
-  $all("[data-edit-orden]").forEach((b) => b.addEventListener("click", () => editOrden(b.dataset.editOrden)));
-  $all("[data-del-orden]").forEach((b) => b.addEventListener("click", () => deleteOrden(b.dataset.delOrden)));
+  renderInicio();
 }
 
-$("#btnNuevaOrden").addEventListener("click", () => {
-  $("#formOrden").reset();
-  $("#formOrden [name=id]").value = "";
-  $("#formOrden [name=fechaInicio]").value = todayStr();
-  $("#modalOrdenTitle").textContent = "Nueva orden de trabajo";
-  openModal("modalOrden");
+["input", "change"].forEach((evt) => {
+  $("#otSearch").addEventListener(evt, renderOrdenes);
+  $("#otFilterEstado").addEventListener("change", renderOrdenes);
+  $("#otFilterPrioridad").addEventListener("change", renderOrdenes);
 });
 
-function editOrden(id) {
-  const item = state.orders.find((o) => o.id === id);
-  if (!item) return;
-  const f = $("#formOrden");
-  f.reset();
-  f.id.value = item.id;
-  f.numeroOrden.value = item.numeroOrden || "";
-  f.cliente.value = item.cliente || "";
-  f.descripcion.value = item.descripcion || "";
-  f.maquina.value = item.maquina || "";
-  f.estado.value = item.estado || "Pendiente";
-  f.fechaInicio.value = item.fechaInicio || "";
-  f.entregaEstimada.value = item.entregaEstimada || "";
-  f.entregaReal.value = item.entregaReal || "";
-  f.responsable.value = item.responsable || "";
-  f.observaciones.value = item.observaciones || "";
-  $("#modalOrdenTitle").textContent = "Editar orden de trabajo";
-  openModal("modalOrden");
+// ---- Nueva OT (formulario inline) ----
+
+function readOrdenForm(f) {
+  return {
+    cliente: f.cliente.value,
+    titulo: f.titulo.value,
+    cantidad: Number(f.cantidad.value) || 1,
+    fechaCompromiso: f.fechaCompromiso.value,
+    ordenCompra: f.ordenCompra.value,
+    remitoCliente: f.remitoCliente.value,
+    remitoSalida: f.remitoSalida.value,
+    operario: f.operario.value,
+    requiereValidacion: !!f.requiereValidacion.checked,
+    requiereTTA: !!f.requiereTTA.checked,
+    requierePlano: !!f.requierePlano.checked,
+    activoAsociado: f.activoAsociado.value,
+    tipo: f.tipo.value,
+    prioridad: f.prioridad.value,
+    ubicacion: f.ubicacion.value,
+    horasEstimadas: f.horasEstimadas.value ? Number(f.horasEstimadas.value) : null,
+  };
 }
 
-async function deleteOrden(id) {
-  if (!confirm("¿Eliminar esta orden de trabajo?")) return;
-  await apiDelete(`${API.orders}?id=${id}`);
-  state.orders = state.orders.filter((o) => o.id !== id);
-  renderOrdenes();
-}
-
-$("#formOrden").addEventListener("submit", async (e) => {
+$("#formOrdenNueva").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target;
-  const data = {
-    numeroOrden: f.numeroOrden.value,
-    cliente: f.cliente.value,
-    descripcion: f.descripcion.value,
-    maquina: f.maquina.value,
-    estado: f.estado.value,
-    fechaInicio: f.fechaInicio.value,
-    entregaEstimada: f.entregaEstimada.value,
-    entregaReal: f.entregaReal.value,
-    responsable: f.responsable.value,
-    observaciones: f.observaciones.value,
-  };
-  if (f.id.value) {
-    const updated = await apiSend(API.orders, "PUT", { ...data, id: f.id.value });
-    const idx = state.orders.findIndex((o) => o.id === updated.id);
-    state.orders[idx] = updated;
-  } else {
-    const created = await apiSend(API.orders, "POST", data);
-    state.orders.push(created);
+  const data = readOrdenForm(f);
+  data.numeroOrden = nextOrderNumber();
+  data.estado = "Pendiente";
+  data.fechaInicio = todayStr();
+  data.entregaReal = "";
+  data.observaciones = "";
+
+  const file = f.planoAdjunto.files[0];
+  if (file) {
+    data.planoData = await fileToDataUrl(file);
+    data.planoNombre = file.name;
   }
-  closeModal("modalOrden");
+
+  const created = await apiSend(API.orders, "POST", data);
+  state.orders.push(created);
+  f.reset();
+  $("#selActivoAsociadoNueva").value = "";
+  renderOrdenes();
+});
+
+// ---- Ver detalle / QR / plano ----
+
+let otDetalleActualId = null;
+
+function verDetalleOt(id) {
+  const item = state.orders.find((o) => o.id === id);
+  if (!item) return;
+  otDetalleActualId = id;
+
+  $("#otDetalleTitulo").textContent = `${item.numeroOrden} · ${item.titulo || ""}`;
+
+  const atrasada = computeOtAtraso(item);
+  const estadoLabel = atrasada ? "Atrasada" : (item.estado || "Pendiente");
+  const estadoClass = atrasada ? "badge-atrasado" : estadoBadgeClass(item.estado);
+
+  const tags = [`<span class="badge ${prioridadBadgeClass(item.prioridad)}">${escapeHtml(item.prioridad || "Media")}</span>`,
+    `<span class="badge ${estadoClass}">${escapeHtml(estadoLabel)}</span>`];
+  if (item.requiereValidacion) tags.push('<span class="badge badge-neutral">Requiere validación</span>');
+  if (item.requiereTTA) tags.push('<span class="badge badge-neutral">Requiere TTA</span>');
+  if (item.requierePlano) tags.push('<span class="badge badge-neutral">Requiere plano</span>');
+  $("#otDetalleTags").innerHTML = tags.join(" ");
+
+  const rows = [
+    ["Cliente", item.cliente], ["Operario / responsable", item.operario || "Sin asignar"],
+    ["Activo asociado", item.activoAsociado || "Sin asignar"], ["Tipo", item.tipo],
+    ["Cantidad", item.cantidad ?? 1], ["Ubicación / sector", item.ubicacion || "-"],
+    ["Fecha inicio", formatDate(item.fechaInicio)], ["Fecha compromiso", formatDate(item.fechaCompromiso)],
+    ["Entrega real", item.entregaReal ? formatDate(item.entregaReal) : "-"], ["Horas estimadas", item.horasEstimadas ?? "-"],
+    ["Orden de compra", item.ordenCompra || "-"], ["Remito cliente", item.remitoCliente || "-"],
+    ["Remito salida", item.remitoSalida || "-"], ["", ""],
+  ];
+
+  let gridHtml = rows.map(([label, val]) => label ? `
+    <div><div class="label">${escapeHtml(label)}</div><div>${escapeHtml(val)}</div></div>
+  ` : "").join("");
+
+  if (item.observaciones) {
+    gridHtml += `<div class="full"><div class="label">Observaciones</div><div>${escapeHtml(item.observaciones)}</div></div>`;
+  }
+  $("#otDetalleGrid").innerHTML = gridHtml;
+
+  if (item.planoData) {
+    $("#otDetallePlano").innerHTML = `<a class="plano-link" href="${item.planoData}" download="${escapeHtml(item.planoNombre || "plano")}">📎 Descargar plano adjunto (${escapeHtml(item.planoNombre || "archivo")})</a>`;
+  } else {
+    $("#otDetallePlano").innerHTML = `<p class="muted">Sin plano adjunto.</p>`;
+  }
+
+  const qrBox = $("#otQrCode");
+  qrBox.innerHTML = "";
+  const qrText = `OT ${item.numeroOrden}\nCliente: ${item.cliente}\nTrabajo: ${item.titulo}\nEntrega: ${formatDate(item.fechaCompromiso)}`;
+  if (window.QRCode) {
+    new QRCode(qrBox, { text: qrText, width: 96, height: 96 });
+  }
+
+  openModal("modalOtDetalle");
+}
+
+$("#btnEliminarOt").addEventListener("click", async () => {
+  if (!otDetalleActualId) return;
+  if (!confirm("¿Eliminar esta orden de trabajo?")) return;
+  await apiDelete(`${API.orders}?id=${otDetalleActualId}`);
+  state.orders = state.orders.filter((o) => o.id !== otDetalleActualId);
+  closeModal("modalOtDetalle");
+  renderOrdenes();
+});
+
+$("#btnEditarOt").addEventListener("click", () => {
+  const item = state.orders.find((o) => o.id === otDetalleActualId);
+  if (!item) return;
+  const f = $("#formOtEditar");
+  f.reset();
+  f.id.value = item.id;
+  f.cliente.value = item.cliente || "";
+  f.titulo.value = item.titulo || "";
+  f.cantidad.value = item.cantidad ?? 1;
+  f.fechaCompromiso.value = item.fechaCompromiso || "";
+  f.ordenCompra.value = item.ordenCompra || "";
+  f.remitoCliente.value = item.remitoCliente || "";
+  f.remitoSalida.value = item.remitoSalida || "";
+  f.operario.value = item.operario || "";
+  f.requiereValidacion.checked = !!item.requiereValidacion;
+  f.requiereTTA.checked = !!item.requiereTTA;
+  f.requierePlano.checked = !!item.requierePlano;
+  f.activoAsociado.value = item.activoAsociado || "";
+  f.tipo.value = item.tipo || "Correctivo";
+  f.prioridad.value = item.prioridad || "Media";
+  f.ubicacion.value = item.ubicacion || "";
+  f.horasEstimadas.value = item.horasEstimadas ?? "";
+  f.estado.value = item.estado || "Pendiente";
+  f.entregaReal.value = item.entregaReal || "";
+  f.observaciones.value = item.observaciones || "";
+  closeModal("modalOtDetalle");
+  openModal("modalOtEditar");
+});
+
+$("#formOtEditar").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const data = readOrdenForm(f);
+  data.id = f.id.value;
+  data.estado = f.estado.value;
+  data.entregaReal = f.entregaReal.value;
+  data.observaciones = f.observaciones.value;
+
+  const file = f.planoAdjunto.files[0];
+  if (file) {
+    data.planoData = await fileToDataUrl(file);
+    data.planoNombre = file.name;
+  }
+
+  const updated = await apiSend(API.orders, "PUT", data);
+  const idx = state.orders.findIndex((o) => o.id === updated.id);
+  state.orders[idx] = updated;
+  closeModal("modalOtEditar");
   renderOrdenes();
 });
 
@@ -453,7 +655,9 @@ function fillConfigForm() {
   $("#cfgRateCNC").value = s.rateCNC ?? 0;
   $("#cfgRateSold").value = s.rateSoldadura ?? 0;
   $("#cfgMargin").value = s.defaultMargin ?? 0;
-  $("#empresaNombre").textContent = s.empresa || "Sistema de Taller";
+  const nombre = s.empresa || "Sistema de Taller";
+  $("#empresaNombreSidebar").textContent = nombre;
+  $("#empresaNombreTop").textContent = nombre;
 }
 
 $("#formConfig").addEventListener("submit", async (e) => {
@@ -490,9 +694,11 @@ async function loadAll() {
     state.settings = settings;
 
     fillConfigForm();
+    populateActivoAsociado();
     renderMantenimiento();
     renderOrdenes();
     renderPresupuestos();
+    renderInicio();
   } catch (err) {
     console.error(err);
     alert("No se pudieron cargar los datos. Revisá la conexión y recargá la página.");
