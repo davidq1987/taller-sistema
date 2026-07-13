@@ -472,7 +472,9 @@ function verDetalleOt(id) {
 
   const qrBox = $("#otQrCode");
   qrBox.innerHTML = "";
-  const qrText = `OT ${item.numeroOrden}\nCliente: ${item.cliente}\nTrabajo: ${item.titulo}\nEntrega: ${formatDate(item.fechaCompromiso)}`;
+  // Texto corto a propósito: "Trabajo" (título libre) queda afuera porque su
+  // longitud variable es la causa más común de overflow en el QR.
+  const qrText = `OT ${item.numeroOrden}\nCliente: ${item.cliente}\nEntrega: ${formatDate(item.fechaCompromiso)}`;
   if (window.QRCode) {
     try {
       // correctLevel L (menor redundancia, mayor capacidad) y typeNumber 0 (auto)
