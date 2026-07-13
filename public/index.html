@@ -22,7 +22,9 @@
       <button class="nav-item active" data-view="inicio"><span class="nav-icon">🏠</span> Inicio</button>
       <button class="nav-item" data-view="mantenimiento"><span class="nav-icon">🛠️</span> Mantenimiento</button>
       <button class="nav-item" data-view="produccion"><span class="nav-icon">📋</span> Órdenes de trabajo</button>
+      <button class="nav-item" data-view="monitor"><span class="nav-icon">📺</span> Monitor de taller</button>
       <button class="nav-item" data-view="presupuestos"><span class="nav-icon">🧾</span> Presupuestos</button>
+      <button class="nav-item" data-view="mensajes"><span class="nav-icon">💬</span> Mensajes interno</button>
       <button class="nav-item" data-view="config"><span class="nav-icon">⚙️</span> Configuración</button>
     </nav>
     <div class="sidebar-footer">Mecanizados · Metalúrgica · Gestión integrada</div>
@@ -239,6 +241,16 @@
         </div>
       </section>
 
+      <!-- MONITOR DE TALLER -->
+      <section class="view" id="view-monitor">
+        <div class="monitor-topbar">
+          <p class="view-intro" style="margin:0;">Pizarra en vivo: todas las OT activas con tiempo transcurrido y tiempo hasta la entrega. Se actualiza sola.</p>
+          <div class="monitor-clock" id="monitorClock">--:--:--</div>
+        </div>
+        <div class="monitor-board" id="monitorBoard"></div>
+        <p class="empty-msg" id="monitorEmptyMsg" style="display:none;">No hay órdenes de trabajo activas en este momento.</p>
+      </section>
+
       <!-- PRESUPUESTOS -->
       <section class="view" id="view-presupuestos">
         <div class="panel-header">
@@ -269,6 +281,52 @@
         </div>
       </section>
 
+      <!-- MENSAJES INTERNO -->
+      <section class="view" id="view-mensajes">
+        <div class="panel-header">
+          <h2>Mensajes interno</h2>
+        </div>
+
+        <div class="card login-box" id="mensajesLogin">
+          <h3 style="margin-top:0;">Ingresar</h3>
+          <p class="muted">Acceso exclusivo para Gerencia y Mantenimiento.</p>
+          <form id="formMensajesLogin" class="field-form" style="max-width:320px;">
+            <label>Usuario
+              <select name="usuario">
+                <option value="gerencia">Gerencia</option>
+                <option value="mantenimiento">Mantenimiento</option>
+              </select>
+            </label>
+            <label>Contraseña
+              <input type="password" name="password" required>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Ingresar</button>
+            </div>
+            <p class="error-msg" id="mensajesLoginError" style="display:none;"></p>
+          </form>
+        </div>
+
+        <div id="mensajesBoard" style="display:none;">
+          <div class="mensajes-session-bar">
+            <span>Conectado como <strong id="mensajesRolActual">-</strong></span>
+            <button class="btn btn-secondary" id="btnMensajesLogout">Cerrar sesión</button>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <form id="formMensajeNuevo" class="field-form">
+              <label>Nuevo aviso
+                <textarea name="texto" rows="2" required placeholder="Escribí un aviso para el otro sector..."></textarea>
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Publicar</button>
+              </div>
+            </form>
+          </div>
+          <div class="msg-list" id="mensajesList"></div>
+          <p class="empty-msg" id="mensajesEmptyMsg" style="display:none;">Todavía no hay avisos publicados.</p>
+        </div>
+      </section>
+
       <!-- CONFIGURACION -->
       <section class="view" id="view-config">
         <div class="panel-header">
@@ -295,6 +353,29 @@
             <span id="cfgSavedMsg" class="saved-msg"></span>
           </div>
         </form>
+
+        <div class="card" style="margin-top:18px; max-width:700px;">
+          <h3 style="margin-top:0;">Seguridad — acceso a Mensajes interno</h3>
+          <p class="muted">Cambiar la contraseña de Gerencia o Mantenimiento para entrar a Mensajes interno.</p>
+          <form id="formCambiarPassword" class="form-grid">
+            <label>Usuario
+              <select name="usuario" id="cfgPassUsuario">
+                <option value="gerencia">Gerencia</option>
+                <option value="mantenimiento">Mantenimiento</option>
+              </select>
+            </label>
+            <label>Contraseña actual
+              <input type="password" name="passwordActual" id="cfgPassActual" required>
+            </label>
+            <label>Contraseña nueva
+              <input type="password" name="passwordNueva" id="cfgPassNueva" required minlength="4">
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+              <span id="cfgPassMsg" class="saved-msg"></span>
+            </div>
+          </form>
+        </div>
       </section>
 
     </main>
@@ -340,6 +421,23 @@
         <button type="submit" class="btn btn-primary">Guardar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- MODAL QR MAQUINA -->
+<div class="modal" id="modalMaquinaQr">
+  <div class="modal-card">
+    <h3 id="maquinaQrTitulo">QR de máquina</h3>
+    <div class="ot-qr-wrap">
+      <div id="maquinaQrCode"></div>
+      <div>
+        <div style="font-weight:bold; font-size:0.85rem;">Etiqueta de mantenimiento</div>
+        <div class="muted" id="maquinaQrInfo" style="margin-top:2px;"></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" data-close-modal="modalMaquinaQr">Cerrar</button>
+    </div>
   </div>
 </div>
 
