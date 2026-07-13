@@ -7,6 +7,8 @@ const API = {
   orders: "/api/orders",
   quotes: "/api/quotes",
   settings: "/api/settings",
+  messages: "/api/messages",
+  auth: "/api/auth",
 };
 
 let state = {
@@ -14,6 +16,7 @@ let state = {
   orders: [],
   quotes: [],
   settings: null,
+  messages: [],
 };
 
 // ---------- utilidades ----------
@@ -95,7 +98,9 @@ const VIEW_META = {
   inicio: { title: "Inicio", sub: "Panorama general del taller" },
   mantenimiento: { title: "Mantenimiento", sub: "Mantenimiento preventivo de máquinas y equipos" },
   produccion: { title: "Órdenes de trabajo", sub: "Gestión operativa del taller, seguimiento por estado" },
+  monitor: { title: "Monitor de taller", sub: "Pizarra en vivo de órdenes de trabajo activas" },
   presupuestos: { title: "Presupuestos", sub: "Cotización de trabajos para clientes" },
+  mensajes: { title: "Mensajes interno", sub: "Comunicación entre Gerencia y Mantenimiento" },
   config: { title: "Configuración", sub: "Datos de la empresa y tarifas" },
 };
 
@@ -109,6 +114,15 @@ $all(".nav-item").forEach((btn) => {
     const meta = VIEW_META[view] || { title: "", sub: "" };
     $("#viewTitle").textContent = meta.title;
     $("#viewSubtitle").textContent = meta.sub;
+
+    stopMonitorRefresh();
+    if (view === "monitor") {
+      renderMonitor();
+      startMonitorRefresh();
+    }
+    if (view === "mensajes") {
+      initMensajesView();
+    }
   });
 });
 
@@ -192,6 +206,7 @@ function renderMantenimiento() {
       <td>${escapeHtml(item.responsable || "")}</td>
       <td>${escapeHtml(item.observaciones || "")}</td>
       <td>
+        <button class="btn-icon" title="QR de mantenimiento" data-qr-mant="${item.id}">📱</button>
         <button class="btn-icon" title="Editar" data-edit-mant="${item.id}">✏️</button>
         <button class="btn-icon" title="Eliminar" data-del-mant="${item.id}">🗑️</button>
       </td>
@@ -199,6 +214,7 @@ function renderMantenimiento() {
     body.appendChild(tr);
   });
 
+  $all("[data-qr-mant]").forEach((b) => b.addEventListener("click", () => showMaquinaQr(b.dataset.qrMant)));
   $all("[data-edit-mant]").forEach((b) => b.addEventListener("click", () => editMant(b.dataset.editMant)));
   $all("[data-del-mant]").forEach((b) => b.addEventListener("click", () => deleteMant(b.dataset.delMant)));
 
@@ -235,6 +251,31 @@ async function deleteMant(id) {
   state.machines = state.machines.filter((m) => m.id !== id);
   renderMantenimiento();
   populateActivoAsociado();
+}
+
+function showMaquinaQr(id) {
+  const item = state.machines.find((m) => m.id === id);
+  if (!item) return;
+  const { proxima } = computeMantEstado(item);
+
+  $("#maquinaQrTitulo").textContent = item.maquina || "Máquina";
+  $("#maquinaQrInfo").textContent =
+    `${item.tipo || ""} · Tarea: ${item.tarea || "-"} · Próximo: ${proxima ? formatDate(proxima) : "-"}`;
+
+  const qrBox = $("#maquinaQrCode");
+  qrBox.innerHTML = "";
+  // Mismo criterio que el QR de OT: texto corto y correctLevel L para evitar
+  // "code length overflow" con máquinas/tareas de nombre largo.
+  const qrText = `Máquina: ${item.maquina}\nTipo: ${item.tipo}\nTarea: ${item.tarea}\nFrecuencia: ${item.frecuenciaDias} días\nPróximo: ${proxima ? formatDate(proxima) : "-"}`;
+  if (window.QRCode) {
+    try {
+      new QRCode(qrBox, { text: qrText, width: 96, height: 96, typeNumber: 0, correctLevel: QRCode.CorrectLevel.L });
+    } catch (err) {
+      console.error("No se pudo generar el QR de la máquina:", err);
+      qrBox.innerHTML = '<span class="muted" style="font-size:0.75rem;">QR no disponible (texto muy largo)</span>';
+    }
+  }
+  openModal("modalMaquinaQr");
 }
 
 $("#formMant").addEventListener("submit", async (e) => {
@@ -550,6 +591,226 @@ $("#formOtEditar").addEventListener("submit", async (e) => {
 });
 
 // ------------------------------------------------------------------
+// MONITOR DE TALLER (pizarra en vivo)
+// ------------------------------------------------------------------
+
+let monitorClockInterval = null;
+let monitorRefreshInterval = null;
+
+function startMonitorRefresh() {
+  stopMonitorRefresh();
+  updateMonitorClock();
+  monitorClockInterval = setInterval(updateMonitorClock, 1000);
+  monitorRefreshInterval = setInterval(renderMonitor, 30000);
+}
+
+function stopMonitorRefresh() {
+  if (monitorClockInterval) clearInterval(monitorClockInterval);
+  if (monitorRefreshInterval) clearInterval(monitorRefreshInterval);
+  monitorClockInterval = null;
+  monitorRefreshInterval = null;
+}
+
+function updateMonitorClock() {
+  const el = $("#monitorClock");
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatElapsed(isoStart) {
+  if (!isoStart) return "-";
+  const start = new Date(isoStart).getTime();
+  if (isNaN(start)) return "-";
+  let diff = Math.max(0, Date.now() - start);
+  const days = Math.floor(diff / 86400000);
+  diff -= days * 86400000;
+  const hours = Math.floor(diff / 3600000);
+  diff -= hours * 3600000;
+  const mins = Math.floor(diff / 60000);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function formatRemaining(fechaCompromiso) {
+  if (!fechaCompromiso) return "-";
+  const dias = daysBetween(todayStr(), fechaCompromiso);
+  if (dias < 0) return `Atrasada hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? "" : "s"}`;
+  if (dias === 0) return "Vence hoy";
+  return `Faltan ${dias} día${dias === 1 ? "" : "s"}`;
+}
+
+function renderMonitor() {
+  const board = $("#monitorBoard");
+  if (!board) return;
+
+  const activas = state.orders
+    .filter((o) => o.estado !== "Entregado")
+    .sort((a, b) => (a.fechaCompromiso || "9999-99-99").localeCompare(b.fechaCompromiso || "9999-99-99"));
+
+  $("#monitorEmptyMsg").style.display = activas.length ? "none" : "block";
+  board.innerHTML = "";
+
+  activas.forEach((item) => {
+    const atrasada = computeOtAtraso(item);
+    const urgClass = atrasada ? "monitor-urgente" : item.estado === "En proceso" ? "monitor-proceso" : "monitor-normal";
+
+    const card = document.createElement("div");
+    card.className = `monitor-card ${urgClass}`;
+    card.innerHTML = `
+      <div class="monitor-card-top">
+        <span class="monitor-card-id">${escapeHtml(item.numeroOrden || "")}</span>
+        <span class="badge ${prioridadBadgeClass(item.prioridad)}">${escapeHtml(item.prioridad || "Media")}</span>
+      </div>
+      <div class="monitor-card-title">${escapeHtml(item.titulo || "")}</div>
+      <div class="monitor-card-meta">
+        <div><b>Cliente:</b> ${escapeHtml(item.cliente || "-")}</div>
+        <div><b>Operario:</b> ${escapeHtml(item.operario || "Sin asignar")}</div>
+      </div>
+      <div class="monitor-card-times">
+        <div><span class="monitor-time-label">En curso</span><span class="monitor-time-value">${formatElapsed(item.createdAt)}</span></div>
+        <div><span class="monitor-time-label">Entrega</span><span class="monitor-time-value">${escapeHtml(formatRemaining(item.fechaCompromiso))}</span></div>
+      </div>
+      <div class="monitor-card-estado">${escapeHtml(item.estado || "Pendiente")}</div>
+    `;
+    board.appendChild(card);
+  });
+}
+
+// ------------------------------------------------------------------
+// MENSAJES INTERNO (requiere login de Gerencia o Mantenimiento)
+// ------------------------------------------------------------------
+
+const MENSAJES_SESSION_KEY = "tallerMensajesSesion";
+
+function getMensajesSession() {
+  try {
+    const raw = localStorage.getItem(MENSAJES_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function setMensajesSession(rol) {
+  localStorage.setItem(MENSAJES_SESSION_KEY, JSON.stringify({ rol, ts: Date.now() }));
+}
+
+function clearMensajesSession() {
+  localStorage.removeItem(MENSAJES_SESSION_KEY);
+}
+
+function initMensajesView() {
+  const session = getMensajesSession();
+  if (session && session.rol) {
+    showMensajesBoard(session.rol);
+  } else {
+    showMensajesLogin();
+  }
+}
+
+function showMensajesLogin() {
+  $("#mensajesLogin").style.display = "block";
+  $("#mensajesBoard").style.display = "none";
+  $("#mensajesLoginError").style.display = "none";
+}
+
+function showMensajesBoard(rol) {
+  $("#mensajesLogin").style.display = "none";
+  $("#mensajesBoard").style.display = "block";
+  $("#mensajesRolActual").textContent = rol;
+  loadMessages();
+}
+
+$("#formMensajesLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const usuario = f.usuario.value;
+  const password = f.password.value;
+  const errBox = $("#mensajesLoginError");
+  errBox.style.display = "none";
+  try {
+    const res = await fetch(API.auth, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      errBox.textContent = data.error || "Contraseña incorrecta.";
+      errBox.style.display = "block";
+      return;
+    }
+    setMensajesSession(data.rol);
+    f.reset();
+    showMensajesBoard(data.rol);
+  } catch (err) {
+    errBox.textContent = "No se pudo conectar. Probá de nuevo.";
+    errBox.style.display = "block";
+  }
+});
+
+$("#btnMensajesLogout").addEventListener("click", () => {
+  clearMensajesSession();
+  showMensajesLogin();
+});
+
+async function loadMessages() {
+  try {
+    state.messages = await apiGet(API.messages);
+    renderMensajes();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function renderMensajes() {
+  const list = $("#mensajesList");
+  if (!list) return;
+  list.innerHTML = "";
+  const sorted = [...state.messages].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  $("#mensajesEmptyMsg").style.display = sorted.length ? "none" : "block";
+
+  sorted.forEach((m) => {
+    const badgeClass = m.autor === "Gerencia" ? "msg-badge-gerencia" : "msg-badge-mantenimiento";
+    const div = document.createElement("div");
+    div.className = "msg-item";
+    div.innerHTML = `
+      <div class="msg-item-header">
+        <span class="badge ${badgeClass}">${escapeHtml(m.autor || "-")}</span>
+        <span class="msg-date">${formatDateTime(m.createdAt)}</span>
+      </div>
+      <div class="msg-text">${escapeHtml(m.texto || "")}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+$("#formMensajeNuevo").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const session = getMensajesSession();
+  if (!session) {
+    showMensajesLogin();
+    return;
+  }
+  const f = e.target;
+  const texto = f.texto.value.trim();
+  if (!texto) return;
+  const created = await apiSend(API.messages, "POST", { autor: session.rol, texto });
+  state.messages.push(created);
+  f.reset();
+  renderMensajes();
+});
+
+// ------------------------------------------------------------------
 // PRESUPUESTOS
 // ------------------------------------------------------------------
 
@@ -683,6 +944,35 @@ $("#formConfig").addEventListener("submit", async (e) => {
   const msg = $("#cfgSavedMsg");
   msg.textContent = "Guardado ✓";
   setTimeout(() => (msg.textContent = ""), 2500);
+});
+
+$("#formCambiarPassword").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const usuario = f.usuario.value;
+  const passwordActual = f.passwordActual.value;
+  const passwordNueva = f.passwordNueva.value;
+  const msg = $("#cfgPassMsg");
+  msg.style.color = "";
+  try {
+    const res = await fetch(API.auth, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, passwordActual, passwordNueva }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      msg.textContent = data.error || "No se pudo cambiar la contraseña.";
+      msg.style.color = "#8a2c1f";
+      return;
+    }
+    msg.textContent = "Contraseña actualizada ✓";
+    f.reset();
+    setTimeout(() => (msg.textContent = ""), 3000);
+  } catch (err) {
+    msg.textContent = "Error de conexión.";
+    msg.style.color = "#8a2c1f";
+  }
 });
 
 // ------------------------------------------------------------------
