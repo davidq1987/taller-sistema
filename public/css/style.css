@@ -381,7 +381,7 @@ tbody tr:hover { background: #fafafa; }
   gap: 4px;
 }
 
-.form-grid input,
+.form-grid input, .form-grid select,
 .field-form input, .field-form select, .field-form textarea,
 #formMant input, #formMant select, #formMant textarea,
 #formPresupuesto input {
@@ -606,6 +606,159 @@ tbody tr:hover { background: #fafafa; }
   margin-top: 4px;
   font-size: 0.85rem;
 }
+
+/* ---------- Monitor de taller ---------- */
+
+.monitor-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.monitor-clock {
+  font-size: 1.4rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  background: var(--navy);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.monitor-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.monitor-card {
+  background: var(--navy);
+  color: #dfe6f5;
+  border-radius: 10px;
+  padding: 16px;
+  border-left: 6px solid #4a6390;
+}
+
+.monitor-card.monitor-urgente { border-left-color: var(--red); }
+.monitor-card.monitor-proceso { border-left-color: #c9791d; }
+.monitor-card.monitor-normal { border-left-color: #4a6390; }
+
+.monitor-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.monitor-card-id {
+  font-weight: bold;
+  font-size: 1rem;
+  color: white;
+}
+
+.monitor-card-title {
+  font-weight: bold;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.monitor-card-meta {
+  font-size: 0.82rem;
+  color: #b9c4dc;
+  margin-bottom: 10px;
+}
+
+.monitor-card-meta b { color: #dfe6f5; }
+
+.monitor-card-times {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.monitor-time-label {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #8f9fc2;
+}
+
+.monitor-time-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: bold;
+  color: white;
+}
+
+.monitor-card-estado {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #8f9fc2;
+}
+
+/* ---------- Mensajes interno ---------- */
+
+.login-box { max-width: 380px; }
+
+.error-msg {
+  color: #8a2c1f;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+.mensajes-session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+}
+
+.msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.msg-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.msg-date {
+  font-size: 0.76rem;
+  color: var(--text-light);
+}
+
+.msg-text {
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+.msg-badge-gerencia { background: #dbeafe; color: #1e40af; }
+.msg-badge-mantenimiento { background: #ffe0b3; color: #8a5a00; }
 
 @media (max-width: 640px) {
   .app-shell { flex-direction: column; }
